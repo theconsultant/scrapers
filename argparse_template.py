@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 
 def parse_arguments():
-    """ Process command line arguments """
+    """ Process command line arguments -> arg dict() """
     parser = ArgumentParser(description='Argument Parser Template')
     parser.add_argument('-b', '--basic', help='basic arg consuming option')
     parser.add_argument('-v', '--verbose', help='increase output verbosity, flag',
@@ -18,7 +18,16 @@ def parse_arguments():
                         type=float)
     #parser.add_argument('-r', '--required', help='required example arg',
     #                    required=True)
+
     args = parser.parse_args()
+
+    return args
+
+
+def main():
+    args = parse_arguments()
+
+    # Do stuff with args
     if args.verbose:
         print 'verbosity flag enabled'
     if args.basic:
@@ -33,10 +42,6 @@ def parse_arguments():
         print 'Your arg is a %s' % type(args.integer)
     if args.float:
         print 'Your arg is a %s' % type(args.float)
-
-
-def main():
-    parse_arguments()
 
 
 if __name__ == '__main__':
