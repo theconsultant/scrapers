@@ -1,59 +1,97 @@
 import requests
 import bs4
+import re
+import urlparse
+import argparse
 
-visited_urls = []
-stored_urls = []
+class Spider():
 
-def get_links(url):
-    """ Extract link urls from a tags """
+    def __init__(self):
+        self.visited_urls = []
+        self.stored_urls = []
 
-    visited_urls.append(url)
-    resp = requests.get(url)
-    soup = bs4.BeautifulSoup(resp.content)
-    links = [tag.get('href') for tag in soup.find_all('a')]
+    def get_links(self, url):
+        """ Extract link urls from <a> tags """
 
-    for link in links:
-        stored_urls.append(link)
+        # Test if URL has valid syntax
+        if not 'http://' in url[:7] or 'https://' in url[:8]:
+            return None
+        
+        self.visited_urls.append(url)
+        try:
+            resp = requests.get(url)
+        except:
+            return None
 
-    return links
+        soup = bs4.BeautifulSoup(resp.content)
+        links = [tag.get('href') for tag in soup.find_all('a')]
 
-def recurse(url):
-    """ Recursivly extract links from a site """
+        # ToDo Fixup relative links to absolute
 
-    print "Beginning at %s" % url
-    for i in get_links(url):
-        print 'Found %s' % i
-    
-    print 'Beginning recurse of stored_urls'    
-    for j in stored_urls:
-        if j in visited_urls:
-            print '%s BEEN THERE DONE THAT' % j
-            continue
-        print j
-        get_links(j)
+        for link in links:
+            if link:
+                if not 'mailto:' in link[:7]:
+                    self.stored_urls.append(link)
+        return links
+
+    def crawl(self, url):
+        """ Recursivly extract links starting with supplied url  """
+        
+        # Test if URL has valid syntax
+        if not 'http://' in url[:7] or 'https://' in url[:8]:
+            raise ValueError('%s is not a valid URL' % url)
+
+        # Parse URL
+        url_parts = urlparse.urlparse(url)
+
+        # Call get_links() to seed stored_urls with initial url
+        print "Beginning at %s" % url
+        for link in self.get_links(url):
+            print 'Found %s' % link
+        
+        print 'Beginning crawling of stored_urls'    
+        for stored_url in self.stored_urls:
+            if not stored_url:
+                continue
+            if not re.search(url_parts.netloc, stored_url):
+                continue
+            if '%20%20%20' in stored_url:
+                continue
+            if stored_url in self.visited_urls:
+                continue
+            print stored_url 
+            self.get_links(stored_url)
+
+        # ToDo Evaluate if making urls unique has value
+        self.stored_urls.sort()
+        self.visited_urls.sort()
+
+        print 'Stored URLS: %i' % len(self.stored_urls)
+        print 'Visited URLS: %i' % len(self.visited_urls)
+
+        filename_visited = 'visited-urls-' + url_parts.netloc
+        filename_stored = 'stored-urls-' + url_parts.netloc
+
+        with open(filename_visited, 'w') as f_visited:
+            for visited in self.visited_urls:
+                f_visited.write(visited + '\n')
+
+        with open(filename_stored, 'w') as f_stored:
+            for stored in self.stored_urls:
+                if stored:
+                    f_stored.write(stored + '\n')
 
 
-def nested():
-    for i in get_links('http://devbox'):
-        print '%s' % i
-        for j in get_links(i):
-            print '%s' % j
-            for k in get_links(j):
-                print '%s' % k
-def main():
-    print 'Found links:'
-    for i in get_links('http://devbox'):
-        print '%s' % i
-        for m in get_links(i):
-            print '%s' % m
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Web Spider')
+    parser.add_argument('-u', '--url', help='url to crawl',
+    required=True)
 
-    print 'Visited URLS:'
-    for j in visited_urls:
-        print j
-
-    print 'Stored URLS:'
-    for k in stored_urls:
-        print k
+    args = parser.parse_args()
+    return args
 
 
-recurse('http://devbox')
+if __name__ == '__main__':
+    args = parse_arguments()
+    mySpider = Spider()
+    mySpider.crawl(args.url)
