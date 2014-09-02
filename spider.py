@@ -62,13 +62,18 @@ class Spider():
             print stored_url 
             self.get_links(stored_url)
 
-        # ToDo Evaluate if making urls unique has value
-        self.stored_urls.sort()
-        self.visited_urls.sort()
+        # Remove dups, become sets
+        self.stored_urls = set(self.stored_urls)
+        self.visited_urls = set(self.visited_urls)
+
+        # Sort, saved back to lists
+        self.stored_urls = sorted(self.stored_urls)
+        self.visited_urls = sorted(self.visited_urls)
 
         print 'Stored URLS: %i' % len(self.stored_urls)
         print 'Visited URLS: %i' % len(self.visited_urls)
 
+        # ToDo Create a resutls dir for each site crawled
         filename_visited = 'visited-urls-' + url_parts.netloc
         filename_stored = 'stored-urls-' + url_parts.netloc
 
