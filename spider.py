@@ -3,7 +3,7 @@ import bs4
 import re
 import urlparse
 import argparse
-import pdb
+import signal
 
 class Spider():
 
@@ -11,58 +11,15 @@ class Spider():
         self.visited_urls = []
         self.stored_urls = []
 
-    def get_links(self, url):
-        """ Extract link urls from <a> tags """
 
-        self.visited_urls.append(url)
-
-        try:
-            resp = requests.get(url)
-        except:
-            return None
-
-
-        soup = bs4.BeautifulSoup(resp.content)
-        links = [tag.get('href').strip() for tag in soup.find_all('a') if tag.get('href')]
-
-        # ToDo Fixup relative links to absolute
-
-        for link in links:
-            if not 'mailto:' in link[:7]:
-                self.stored_urls.append(link)
-        return links
-
-    def crawl(self, url):
-        """ Recursivly extract links starting with supplied url  """
-        
-        # Test if URL has valid syntax
-        if not 'http://' in url[:7]:
-            if not 'https://' in url[:8]: 
-                raise ValueError('%s is not a valid URL' % url)
-
-        # Parse URL
-        self.domain_name = urlparse.urlparse(url)[1]
-
-        # Call get_links() to seed stored_urls with initial url
-        print "[*] STARTING AT %s" % url
-        for link in self.get_links(url):
-            print 'Found %s' % link
-        
-        print '[*] BEGINNING CRAWLING OF STORED URLS'
-        for stored_url in self.stored_urls:
-            if not re.search(self.domain_name, stored_url):
-                continue
-            if '%20%20%20' in stored_url:
-                continue
-            if stored_url in self.visited_urls:
-                continue
-            print stored_url 
-            self.get_links(stored_url) 
+    def _stop_crawling(self, signal, frame):
+        """ SIGINT handler to save results and abort the program """
         self._save_results()
+        del self.stored_urls
+
 
     def _get_subdomains(self):
         """ Parse visited_urls and retrieve subdomains """
-
         self.subdomains = set()
 
         for visited_url in self.visited_urls:
@@ -71,13 +28,14 @@ class Spider():
                 if len(fqdn.split('.')) > 2:
                     self.subdomains.add(fqdn.split('.')[0])
 
+
     def _get_directories(self):
         """ Parse visited_urls and create a directory structure """
+        pass
 
      
     def _save_results(self):
         """ Clean lists and write stored/visited/subdomains to disk """
-
         # Creates self.subdomains
         self._get_subdomains()
 
@@ -115,7 +73,64 @@ class Spider():
                     f_subdomain.write(subdomain + '\n')
 
 
+    def get_links(self, url):
+        """ Extract link urls from <a> tags """
+        self.visited_urls.append(url)
+
+        try:
+            resp = requests.get(url)
+        except:
+            return None
+
+        soup = bs4.BeautifulSoup(resp.content)
+        links = [tag.get('href').strip() for tag in soup.find_all('a') if tag.get('href')]
+
+        # ToDo Fixup relative links to absolute
+
+        # Catch AttributeError and exit when _stop_crawling() is ran
+        try:
+            for link in links:
+                if not 'mailto:' in link[:7]:
+                    self.stored_urls.append(link)
+            return links
+        except AttributeError as e:
+            print '[*] Spider Aborted'
+            raise SystemExit
+
+
+    def crawl(self, url):
+        """ Recursivly extract links starting with supplied url  """
+        # Register interrupt handler
+        signal.signal(signal.SIGINT, self._stop_crawling)
+        
+        # Test if URL has valid syntax
+        if not 'http://' in url[:7]:
+            if not 'https://' in url[:8]: 
+                raise ValueError('%s is not a valid URL' % url)
+
+        # Parse URL
+        self.domain_name = urlparse.urlparse(url)[1]
+
+        # Call get_links() to seed stored_urls with initial url
+        print "[*] Starting at %s" % url
+        for link in self.get_links(url):
+            print 'Found %s' % link
+        
+        print '[*] Beginning crawling of stored URLs'
+        for stored_url in self.stored_urls:
+            if not re.search(self.domain_name, stored_url):
+                continue
+            if '%20%20%20' in stored_url:
+                continue
+            if stored_url in self.visited_urls:
+                continue
+            print stored_url 
+            self.get_links(stored_url) 
+        self._save_results()
+
+
 def parse_arguments():
+    """ Get command line arguments """
     parser = argparse.ArgumentParser(description='Web Spider')
     parser.add_argument('-u', '--url', help='url to crawl',
     required=True)
