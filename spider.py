@@ -4,6 +4,7 @@ import re
 import urlparse
 import argparse
 import signal
+import os
 
 class Spider():
 
@@ -53,9 +54,12 @@ class Spider():
         print 'Subdomains: %i' % len(self.subdomains)
 
         # ToDo Create a resutls dir for each site crawled
-        filename_visited = 'visited-urls-' + self.domain_name
-        filename_stored = 'stored-urls-' + self.domain_name
-        filename_subdomain = 'subdomains-' + self.domain_name
+        filename_visited = self.domain_name + '/visited-urls' 
+        filename_stored = self.domain_name + '/stored-urls' 
+        filename_subdomain = self.domain_name + '/subdomains' 
+
+        if not os.path.exists(self.domain_name):
+            os.mkdir(self.domain_name)
 
         with open(filename_visited, 'w') as f_visited:
             for visited in self.visited_urls:
@@ -72,9 +76,21 @@ class Spider():
                 if subdomain:
                     f_subdomain.write(subdomain + '\n')
 
+        """
+        in popTag
+            return self.currentTag
+              File "spider.py", line 18, in _stop_crawling
+                  self._save_results()
+                    File "spider.py", line 72, in _save_results
+                        f_stored.write(stored + '\n')
+                        UnicodeEncodeError: 'ascii' codec can't encode character u'\xe7' in position 49: ordinal not in range(128)
+        """
 
     def get_links(self, url):
         """ Extract link urls from <a> tags """
+        # Register interrupt handler
+        signal.signal(signal.SIGINT, self._stop_crawling)
+
         self.visited_urls.append(url)
 
         try:
@@ -87,7 +103,7 @@ class Spider():
 
         # ToDo Fixup relative links to absolute
 
-        # Catch AttributeError and exit when _stop_crawling() is ran
+        # Catch AttributeError and exit when _stop_crawling() is called
         try:
             for link in links:
                 if not 'mailto:' in link[:7]:
@@ -118,7 +134,7 @@ class Spider():
         
         print '[*] Beginning crawling of stored URLs'
         for stored_url in self.stored_urls:
-            if not re.search(self.domain_name, stored_url):
+            if not re.search(self.domain_name, urlparse.urlparse(stored_url)[1]):
                 continue
             if '%20%20%20' in stored_url:
                 continue
