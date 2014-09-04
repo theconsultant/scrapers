@@ -64,17 +64,17 @@ class Spider():
         with open(filename_visited, 'w') as f_visited:
             for visited in self.visited_urls:
                 if visited:
-                    f_visited.write(visited + '\n')
+                    f_visited.write(visited.encode('UTF-8') + '\n')
 
         with open(filename_stored, 'w') as f_stored:
             for stored in self.stored_urls:
                 if stored:
-                    f_stored.write(stored + '\n')
+                    f_stored.write(stored.encode('UTF-8') + '\n')
 
         with open(filename_subdomain, 'w') as f_subdomain:
             for subdomain in self.subdomains:
                 if subdomain:
-                    f_subdomain.write(subdomain + '\n')
+                    f_subdomain.write(subdomain.encode('UTF-8') + '\n')
 
         """
         in popTag
