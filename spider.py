@@ -53,7 +53,6 @@ class Spider():
         print 'Visited URLS: %i' % len(self.visited_urls)
         print 'Subdomains: %i' % len(self.subdomains)
 
-        # ToDo Create a resutls dir for each site crawled
         filename_visited = self.domain_name + '/visited-urls' 
         filename_stored = self.domain_name + '/stored-urls' 
         filename_subdomain = self.domain_name + '/subdomains' 
@@ -76,15 +75,6 @@ class Spider():
                 if subdomain:
                     f_subdomain.write(subdomain.encode('UTF-8') + '\n')
 
-        """
-        in popTag
-            return self.currentTag
-              File "spider.py", line 18, in _stop_crawling
-                  self._save_results()
-                    File "spider.py", line 72, in _save_results
-                        f_stored.write(stored + '\n')
-                        UnicodeEncodeError: 'ascii' codec can't encode character u'\xe7' in position 49: ordinal not in range(128)
-        """
 
     def get_links(self, url):
         """ Extract link urls from <a> tags """
@@ -101,13 +91,16 @@ class Spider():
         soup = bs4.BeautifulSoup(resp.content)
         links = [tag.get('href').strip() for tag in soup.find_all('a') if tag.get('href')]
 
-        # ToDo Fixup relative links to absolute
-
         # Catch AttributeError and exit when _stop_crawling() is called
         try:
             for link in links:
                 if not 'mailto:' in link[:7]:
-                    self.stored_urls.append(link)
+                    if not 'http' in link[:4]:
+                        self.stored_urls.append(urlparse.urljoin('http://' + self.domain_name, link))
+        #                print "domain name is %s " % self.domain_name
+         #               print "new url is %s " % urlparse.urljoin('http://' + self.domain_name, link)
+                    else:
+                        self.stored_urls.append(link)
             return links
         except AttributeError as e:
             print '[*] Spider Aborted'
