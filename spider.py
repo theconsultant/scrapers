@@ -90,18 +90,16 @@ class Spider():
 
         soup = bs4.BeautifulSoup(resp.content)
         links = [tag.get('href').strip() for tag in soup.find_all('a') if tag.get('href')]
+        del resp
 
         # Catch AttributeError and exit when _stop_crawling() is called
         try:
             for link in links:
-                if not 'mailto:' in link[:7]:
-                    if not 'http' in link[:4]:
-                        self.stored_urls.append(urlparse.urljoin('http://' + self.domain_name, link))
-        #                print "domain name is %s " % self.domain_name
-         #               print "new url is %s " % urlparse.urljoin('http://' + self.domain_name, link)
-                    else:
-                        self.stored_urls.append(link)
-            return links
+                if not 'http' in link[:4]:
+                    self.stored_urls.append(urlparse.urljoin('http://' + self.domain_name, link))
+                else:
+                    self.stored_urls.append(link)
+            return self.stored_urls
         except AttributeError as e:
             print '[*] Spider Aborted'
             raise SystemExit
@@ -127,9 +125,11 @@ class Spider():
         
         print '[*] Beginning crawling of stored URLs'
         for stored_url in self.stored_urls:
-            if not re.search(self.domain_name, urlparse.urlparse(stored_url)[1]):
+            if not self.domain_name in urlparse.urlparse(stored_url)[1]:
                 continue
             if '%20%20%20' in stored_url:
+                continue
+            if '.pdf' in stored_url:
                 continue
             if stored_url in self.visited_urls:
                 continue
