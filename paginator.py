@@ -3,7 +3,7 @@ import bs4
 import urlparse
 
 class Scraper():
-    """ Simple screper with get_next_page method """
+    """ Simple scraper with get_next_page method """
 
     def __init__(self):
         self.listings = 0
